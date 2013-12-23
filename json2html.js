@@ -11,6 +11,13 @@
 //  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 var json2html = {
+		
+	//cgajardo: se agrega una variable para incializar los catálogos
+	'catalogos':{},
+	
+	'ini': function(catalogs){
+		catalogos = catalogs;
+	},
 	
 	/* ---------------------------------------- Public Methods ------------------------------------------------ */
 	'transform': function(json,transform,_options) {
@@ -24,6 +31,7 @@ var json2html = {
 		};
 		
 		//extend the options
+		//cgajardo: junta dos objetos en uno
 		options = json2html._extend(options,_options);
 
 		//Make sure we have a transform & json object
@@ -196,7 +204,7 @@ var json2html = {
 							if( !isEvent){
 								//Get the value
 								var val = json2html._getValue(obj, transform, key, index);
-								
+								console.log("HINT "+val);
 								//Make sure we have a value
                                 if(val !== undefined) {
                                     var out;
@@ -215,6 +223,21 @@ var json2html = {
 
 				//close the opening tag
 				element.html += '>';
+				
+				//cgajardo: chequeamos por condiciones TBJ
+				if(transform.tag == "select"){
+					//cgajardo: si viene con data-set recuperamos las opciones desde los datos
+					if(transform.data_set !== undefined){
+						element.html+="<option value='volvo>Select something!</option>";
+					}
+					//cgajardo: si viene con las opciones desde el servidor, las agregamos
+					else if (transform.options !== undefined) {
+						
+					}
+					
+					//Vamos a chequear si tenemos un catalogo o una coleccion de elementos
+					//element.html
+				}
 				
 				//add the innerHTML (if we have any)
 				if(html) element.html += html;
@@ -240,16 +263,20 @@ var json2html = {
 	},
 
 	//Get the html value of the object
-	'_getValue':function(obj, transform, key,index) {
-		
+	'_getValueFromCatalog':function(obj, transform, key,index) {
+		console.log(obj);
+		console.log(transform);
+		console.log("me solicitan "+key+" "+index);
 		var out = '';
 		
 		var val = transform[key];
 		var type = typeof val;
 		
 		if (type === 'function') {
+			console.log("Soy una funcion");
 			return(val.call(obj,obj,index));
 		} else if (type === 'string') {
+			console.log("Soy un string");
 			var _tokenizer = new json2html._tokenizer([
 				/\$\{([^\}\{]+)\}/
 			],function( src, real, re ){
@@ -271,6 +298,66 @@ var json2html = {
 						if( components[i].length > 0 ) {
 
 							var newObj = useObj[components[i]];
+							console.log("Nuevo objeto");
+							console.log(newObj);
+							useObj = newObj;
+							if(useObj === null || useObj === undefined) break;
+						}
+					}
+					
+					//As long as we have an object to use then set the out
+					if(useObj !== null && useObj !== undefined) outVal = useObj;
+
+					return(outVal);
+				}) : src;
+			});
+			
+			out = _tokenizer.parse(val).join('');
+		} else {
+			out = val;
+		}
+
+		return(out);
+	},
+	
+	//Get the html value of the object
+	'_getValue':function(obj, transform, key,index) {
+		console.log(obj);
+		console.log(transform);
+		console.log("me solicitan "+key+" "+index);
+		var out = '';
+		
+		var val = transform[key];
+		var type = typeof val;
+		
+		if (type === 'function') {
+			console.log("Soy una funcion");
+			return(val.call(obj,obj,index));
+		} else if (type === 'string') {
+			console.log("Soy un string");
+			var _tokenizer = new json2html._tokenizer([
+				/\$\{([^\}\{]+)\}/
+			],function( src, real, re ){
+				return real ? src.replace(re,function(all,name){
+					
+					//Split the string into it's seperate components
+					var components = name.split('.');
+
+					//Set the object we use to query for this name to be the original object
+					var useObj = obj;
+
+					//Output value
+					var outVal = '';
+					
+					//Parse the object components
+					var c_len = components.length;
+					for (var i=0;i<c_len;++i) {
+
+						if( components[i].length > 0 ) {
+
+							var newObj = useObj[components[i]];
+							console.log("Nuevo objeto");
+							console.log(newObj);
 							useObj = newObj;
 							if(useObj === null || useObj === undefined) break;
 						}
